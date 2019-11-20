@@ -1,10 +1,10 @@
 # Azure tech training day
 
-![poster](images/poster.png)
+![poster](/images/poster.png)
 
 ## Initial configuration
 
-![Resource groups](images/blur-bookcase-business-cds-264544.jpg)
+![Resource groups](/images/blur-bookcase-business-cds-264544.jpg)
 
 ```bash
 PS1=\\n\\n$PS1
@@ -24,7 +24,7 @@ az group create --name $PREFIX-rg --location westeurope
 
 ## Storage accounts
 
-![Storage](images/vinyl-record-playing-164853.jpg)
+![Storage](/images/vinyl-record-playing-164853.jpg)
 
 ```bash
 az storage account create \
@@ -62,7 +62,7 @@ az storage account show \
 
 ## Relational databases
 
-![Databases](images/UNIVAC-I-BRL61-0977-wikipedia.jpg)
+![Databases](/images/UNIVAC-I-BRL61-0977-wikipedia.jpg)
 
 ### Servers and databases
 
@@ -138,7 +138,7 @@ curl https://pastebin.com/raw/3jkbTTSq -s | \
 
 ## Application secrets
 
-![Vaults](images/abus-brand-close-up-closed-277670.jpg)
+![Vaults](/images/abus-brand-close-up-closed-277670.jpg)
 
 ### Keyvault and User Managed Identities
 
@@ -190,7 +190,7 @@ az keyvault secret set \
 
 ### Virtual networks
 
-![Networking](images/fortress-pexels-photo-532931.jpeg)
+![Networking](/images/fortress-pexels-photo-532931.jpeg)
 
 ```bash
 az network vnet create \
@@ -203,7 +203,7 @@ az network vnet create \
 
 ### Managed resource connectivity
 
-![Bridge](images/stargate.jpg)
+![Bridge](/images/stargate.jpg)
 
 ```bash
 # This will only work with subscription-wide privileges
@@ -228,13 +228,13 @@ az sql server vnet-rule create \
 
 ## Virtual machines
 
-![Dogs](images/dogs.jpg)
+![Dogs](/images/dogs.jpg)
 
 * See https://azureprice.net
 
 ### Firewall configuration using NSGs
 
-![Dog](images/dog.jpg)
+![Dog](/images/dog.jpg)
 
 ```bash
 az network nsg create \
@@ -285,7 +285,7 @@ az vm create \
 
 ### Software configuration with extensions
 
-![Building](images/2-man-on-construction-site-during-daytime-159306.jpg)
+![Building](/images/2-man-on-construction-site-during-daytime-159306.jpg)
 
 ```bash
 cat << EOF > script-pokemon.sh
@@ -330,7 +330,7 @@ echo Click here: http://$VM_IP:8080
 
 ## Asynchronous architectures
 
-![Treebookhouse](images/book-crossing-tree.jpg)
+![Treebookhouse](/images/book-crossing-tree.jpg)
 
 ### Storage account queues
 
@@ -343,7 +343,7 @@ az storage queue create \
 
 ### Permission assignment 
 
-![Keys](images/antique-crumpled-crumpled-paper-dirty-612800.jpg)
+![Keys](/images/antique-crumpled-crumpled-paper-dirty-612800.jpg)
 
 ```bash
 SA_ID=$(az storage account show --name ${PREFIX}stacc -g $PREFIX-rg --query id --output tsv) && echo $SA_ID
@@ -373,7 +373,7 @@ done
 
 ### Queue producer creation
 
-![Written order](images/person-hands-woman-pen-110473.jpg)
+![Written order](/images/person-hands-woman-pen-110473.jpg)
 
 ```bash
 cat << EOF > script-pokemon-healthbeat.sh
@@ -428,7 +428,7 @@ echo Click here: http://$VM_IP_HC:8080
 
 ### Command line queue consumer
 
-![Welding](images/man-wearing-welding-helmet-welding-metal-near-gray-brick-1474993.jpg)
+![Welding](/images/man-wearing-welding-helmet-welding-metal-near-gray-brick-1474993.jpg)
 
 ```bash
 az storage message get \
@@ -439,11 +439,11 @@ az storage message get \
 
 ## HA architectures
 
-![Two bridges](images/bridges.jpg)
+![Two bridges](/images/bridges.jpg)
 
 ### Load balancers, backends, probes and rules
 
-![Lights](images/splittedlaser.jpg)
+![Lights](/images/splittedlaser.jpg)
 
 ```bash
 az network public-ip create \
@@ -517,7 +517,7 @@ az network nsg rule create \
 
 ## VM Fleets with VMSS
 
-![Clones](images/clones.jpg)
+![Clones](/images/clones.jpg)
 
 ```bash
 az vmss create \
@@ -562,7 +562,7 @@ LB_IP=$(az network public-ip show \
 
 ## Azure apps service
 
-![Happyness](images/adult-background-casual-941693.jpg)
+![Happyness](/images/adult-background-casual-941693.jpg)
 
 ### Web app provisioning
 
@@ -589,7 +589,7 @@ az webapp log config \
 
 ### Slots
 
-![Two phones](images/selective-focus-photography-of-two-smartphones-with-blank-2606516.jpg)
+![Two phones](/images/selective-focus-photography-of-two-smartphones-with-blank-2606516.jpg)
 
 ```bash
 az webapp deployment slot create \
@@ -629,7 +629,7 @@ az webapp config appsettings set \
 
 ### Container deployment
 
-![Whale](images/whale-2517325_1280.jpg)
+![Whale](/images/whale-2517325_1280.jpg)
 
 ```bash
 az webapp config container set \
@@ -654,7 +654,7 @@ WEBAPP_SECONDARY=$(az webapp show \
 
 ### Traffic control
 
-![Traffic](images/light-trails-on-city-street-327345.jpg)
+![Traffic](/images/light-trails-on-city-street-327345.jpg)
 
 ```bash
 az webapp traffic-routing set \
@@ -671,7 +671,7 @@ az webapp deployment slot swap \
 
 ## Azure pipelines
 
-![Gear](images/colorful-toothed-wheels-171198.jpg)
+![Gear](/images/colorful-toothed-wheels-171198.jpg)
 
 ```bash
 az appservice plan create \
