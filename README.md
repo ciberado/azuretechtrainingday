@@ -1,5 +1,6 @@
 # Azure tech training day
 
+![poster](images/poster.png)
 
 ## Initial configuration
 
@@ -14,6 +15,7 @@ source prefix.sh
 az login
 
 az account show
+az account list-locations --output table
 az provider list --output table
 az provider register --name Microsoft.KeyVault
 
@@ -201,7 +203,7 @@ az network vnet create \
 
 ### Managed resource connectivity
 
-![Bridge](images/gray-bridge-and-trees-814499.jpg)
+![Bridge](images/stargate.jpg)
 
 ```bash
 # This will only work with subscription-wide privileges
