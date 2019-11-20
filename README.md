@@ -1,0 +1,657 @@
+# Azure tech training day
+
+
+## Initial configuration
+
+```bash
+PS1=\\n\\n$PS1
+
+echo "export PREFIX=lab$RANDOM" > prefix.sh
+source prefix.sh
+
+az login
+
+az account show
+az provider list --output table
+az provider register --name Microsoft.KeyVault
+
+az group create --name $PREFIX-rg --location westeurope
+```
+
+## Storage accounts
+
+```bash
+az storage account create \
+  --name ${PREFIX}stacc \
+  -g $PREFIX-rg \
+  --kind StorageV2 \
+  --sku Standard_LRS
+```
+
+### Static websites
+
+```bash
+az storage blob service-properties update \
+  --account-name ${PREFIX}stacc \
+  --static-website \
+  --404-document 404.html \
+  --index-document index.html \
+  --output table
+
+mkdir web
+wget https://pastebin.com/raw/Y1D5zYNR -O web/index.html
+wget https://pastebin.com/raw/jxEqVD29 -O web/404.html
+
+az storage blob upload-batch \
+  --account-name ${PREFIX}stacc \
+  --source web \
+  --destination \$web \
+  --output table
+
+az storage account show \
+  --name ${PREFIX}stacc \
+  --query "primaryEndpoints.web" \
+  --output tsv
+```
+
+## Relational databases
+
+### Servers and databases
+
+* Azure SQL, Azure database for Mysql, Azure database for Postresql
+* Logical servers
+* Databases
+* Serverless model
+
+```bash
+SQL_PASS=MyPassword$RANDOM
+echo $SQL_PASS > sql_pass.txt
+
+az sql server create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemondb-server \
+  --admin-user dbadmin \
+  --admin-password $SQL_PASS \
+  --output table
+
+# Discuss about db capacity planning
+az sql db create \
+  --resource-group $PREFIX-rg \
+  --server $PREFIX-pokemondb-server \
+  --name pokemonDB \
+  --auto-pause-delay 480 \
+  --edition GeneralPurpose \
+  --family Gen5 \
+  --capacity 1 \
+  --compute-model Serverless \
+  --auto-pause-delay 60 \
+  --zone-redundant false \
+  --tags Owner=$PREFIX Project=pokemon \
+  --output table
+```
+
+### Firewall rules
+
+```bash
+MY_IP=$(curl ifconfig.co -s)
+
+az sql server firewall-rule create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemondb-server--fw-rule \
+  --server $PREFIX-pokemondb-server \
+  --start-ip-address $MY_IP \
+  --end-ip-address $MY_IP \
+  --output table
+```
+
+### Interaction
+ 
+```bash
+pip install --user mssql-cli
+
+alias mssql-cli=$HOME/.local/bin/mssql-cli
+
+SQL_URL=$PREFIX-pokemondb-server.database.windows.net
+
+mssql-cli \
+  --username dbadmin \
+  --password $SQL_PASS \
+  --server $SQL_URL \
+  --database pokemonDB \
+  --query "\ld"
+
+curl https://pastebin.com/raw/3jkbTTSq -s | \
+  mssql-cli \
+    --username dbadmin \
+    --password $SQL_PASS \
+    --server $SQL_URL \
+    --database pokemonDB 
+```
+
+## Application secrets
+
+
+### Keyvault and User Managed Identities
+
+```bash
+az keyvault create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-vault \
+  --output table
+
+# Execute it twice and compare .PrincipalId to talk about idempotency
+az identity create \
+  --name $PREFIX-pokemonapp-msi \
+  --resource-group $PREFIX-rg 
+
+PRINCIPAL=$(az identity show \
+  --name $PREFIX-pokemonapp-msi \
+  --resource-group $PREFIX-rg \
+  --query principalId \
+  --output tsv) && echo $PRINCIPAL
+
+az keyvault set-policy \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-vault \
+  --secret-permission get \
+  --object-id $PRINCIPAL \
+  --output table
+```
+
+### Secret storage
+
+```bash
+SQL_CONN=$(az sql db show-connection-string \
+  --client odbc \
+  --auth-type SqlPassword \
+  --name pokemonDB \
+  --server $PREFIX-pokemondb-server \
+  --output tsv | \
+  awk '{gsub("<username>", "dbadmin", $0); print}' | \
+  awk '{gsub("<password>", p, $0); print}' p="$SQL_PASS") && echo $SQL_CONN
+  
+az keyvault secret set \
+  --vault-name $PREFIX-vault \
+  --name "PokemonDBConn" \
+  --value "$SQL_CONN"
+```
+
+## Networking infraestructure
+
+
+### Virtual networks
+
+```bash
+az network vnet create \
+  -g $PREFIX-rg \
+  --name $PREFIX-vnet \
+  --address-prefix 10.0.0.0/16 \
+  --subnet-name $PREFIX-subnet-public \
+  --subnet-prefix 10.0.0.0/24 
+```
+
+### Managed resource connectivity
+
+```bash
+# This will only work with subscription-wide privileges
+az network vnet list-endpoint-services \
+  --location westeurope \
+  --output table
+
+az network vnet subnet update \
+  --resource-group $PREFIX-rg \
+  --vnet-name $PREFIX-vnet \
+  --name $PREFIX-subnet-public \
+  --service-endpoints Microsoft.Sql \
+  --output table
+
+az sql server vnet-rule create \
+  --name $PREFIX-pokemondb-server-firewall-rule \
+  --resource-group $PREFIX-rg \
+  --server $PREFIX-pokemondb-server \
+  --vnet-name $PREFIX-vnet \
+  --subnet $PREFIX-subnet-public 
+```
+
+## Virtual machines
+
+* See https://azureprice.net
+
+### Firewall configuration using NSGs
+
+```bash
+az network nsg create \
+  --name $PREFIX-pokemon-nsg \
+  --resource-group $PREFIX-rg 
+
+az network nsg rule create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-nsg-ssh \
+  --nsg-name $PREFIX-pokemon-nsg \
+  --priority 220 \
+  --access Allow \
+  --source-address-prefixes $MY_IP \
+  --destination-port-ranges 22 \
+  --protocol Tcp \
+  --description "Allow ssh administration (bad idea)" 
+
+az network nsg rule create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-nsg-web \
+  --nsg-name $PREFIX-pokemon-nsg \
+  --priority 200 \
+  --access Allow \
+  --source-address-prefixes Internet \
+  --destination-port-ranges 80 8080 \
+  --protocol Tcp \
+  --description "Allow traffic to pokemon app" 
+```
+  
+### Virtual machine creation
+
+```bash
+# Show all resources created: PublicIP, VMNic, vm-Disk and vm
+az vm create \
+  --name $PREFIX-pokemon-vm \
+  --resource-group $PREFIX-rg \
+  --image UbuntuLTS  \
+  --admin-username $PREFIX \
+  --vnet-name $PREFIX-vnet \
+  --subnet $PREFIX-subnet-public \
+  --authentication-type ssh \
+  --assign-identity $PREFIX-pokemonapp-msi \
+  --nsg $PREFIX-pokemon-nsg \
+  --generate-ssh-keys \
+  --size Standard_DS1_v2 \
+  --tags Owner=$PREFIX Project=pokemon Name="Pokemon VM" 
+```
+
+### Software configuration with extensions
+
+```bash
+cat << EOF > script-pokemon.sh
+#!/bin/sh
+
+sudo apt update
+sudo apt -y install curl dirmngr apt-transport-https lsb-release ca-certificates
+curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+sudo apt -y install nodejs gcc g++ make
+
+git clone https://github.com/ciberado/pokemon-nodejs
+cd pokemon-nodejs
+git checkout azure-demo
+npm install
+export PORT=8080
+export KEY_VAULT_URI=https://$PREFIX-vault.vault.azure.net
+# Important: avoid blocking the extension mechanism by running the app in background
+node app.js > app.log &
+EOF
+
+# Exercise: use Blob Storage as the natural way of storing extension scripts
+SCRIPT_URL=$(curl -s --upload-file ./script-pokemon.sh https://transfer.sh/script-pokemon.sh) && echo $SCRIPT_URL
+
+az vm extension set \
+  --resource-group $PREFIX-rg \
+  --vm-name $PREFIX-pokemon-vm \
+  --name customScript \
+  --publisher Microsoft.Azure.Extensions \
+  --settings "{\"fileUris\": [\"$SCRIPT_URL\"],\"commandToExecute\": \"./script-pokemon.sh\"}" 
+
+VM_IP=$(az vm list-ip-addresses \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-vm \
+  --query [0].virtualMachine.network.publicIpAddresses[0].ipAddress \
+  --output tsv) && echo $VM_IP
+
+ssh $PREFIX@$VM_IP \
+  sudo cat /var/lib/waagent/custom-script/download/0/pokemon-nodejs/app.log
+
+echo Click here: http://$VM_IP:8080
+```
+
+## Asynchronous architectures
+
+### Storage account queues
+
+```bash
+az storage queue create \
+  --account-name ${PREFIX}stacc \
+  --name healthbeats \
+  --output table
+```
+
+### Permission assignment 
+
+```bash
+SA_ID=$(az storage account show --name ${PREFIX}stacc -g $PREFIX-rg --query id --output tsv) && echo $SA_ID
+
+PRINCIPAL=$(az identity show --name $PREFIX-pokemonapp-msi --resource-group $PREFIX-rg --query principalId --output tsv) && echo $PRINCIPAL
+
+sleep 10 # wait for principal propagation
+
+until az role assignment create \
+  --assignee $PRINCIPAL \
+  --role 'Owner' \
+  --scope $SA_ID
+do
+  echo "Trying again role assignment."
+  sleep 10
+done 
+
+until az role assignment create \
+  --assignee $PRINCIPAL \
+  --role 'Storage Queue Data Contributor' \
+  --scope $SA_ID
+do
+  echo "Trying again role assignment."
+  sleep 10
+done 
+```
+
+### Queue producer creation
+
+```bash
+cat << EOF > script-pokemon-healthbeat.sh
+#!/bin/sh
+
+sudo apt update
+sudo apt -y install curl dirmngr apt-transport-https lsb-release ca-certificates
+curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+sudo apt -y install nodejs gcc g++ make
+
+git clone https://github.com/ciberado/pokemon-nodejs
+cd pokemon-nodejs
+git checkout azure-demo
+npm install
+export PORT=8080
+export AZURE_STORAGE_NAME=${PREFIX}stacc
+export KEY_VAULT_URI=https://$PREFIX-vault.vault.azure.net
+node app.js > app.log &
+EOF
+
+# This time, using custom-data
+az vm create \
+  --name $PREFIX-pokemon-vm-healthbeat \
+  --resource-group $PREFIX-rg \
+  --image UbuntuLTS  \
+  --admin-username $PREFIX \
+  --vnet-name $PREFIX-vnet \
+  --subnet $PREFIX-subnet-public \
+  --authentication-type ssh \
+  --assign-identity $PREFIX-pokemonapp-msi \
+  --nsg $PREFIX-pokemon-nsg \
+  --generate-ssh-keys \
+  --size Standard_DS1_v2 \
+  --tags Owner=$PREFIX Project=pokemon Name="Pokemon VM" \
+  --custom-data script-pokemon-healthbeat.sh
+  
+VM_IP_HC=$(az vm list-ip-addresses \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-vm-healthbeat \
+  --query [0].virtualMachine.network.publicIpAddresses[0].ipAddress \
+  --output tsv) && echo $VM_IP_HC
+
+
+ssh $PREFIX@$VM_IP_HC \
+  sudo tail /var/log/cloud-init-output.log --follow
+ssh $PREFIX@$VM_IP_HC \
+  sudo tail sudo tail /pokemon-nodejs/app.log --follow
+
+echo Click here: http://$VM_IP_HC:8080
+
+```
+
+### Command line queue consumer
+
+```bash
+az storage message get \
+  --account-name ${PREFIX}stacc \
+  --queue-name healthbeats \
+  --num-messages 32
+```
+
+## HA architectures
+
+### Load balancers, backends, probes and rules
+
+```bash
+az network public-ip create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-lb-ip \
+  --allocation-method Static \
+  --sku Standard \
+  --output table
+
+az network lb create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-lb \
+  --public-ip-address $PREFIX-lb-ip  \
+  --frontend-ip-name $PREFIX-lb-frontend-pool \
+  --backend-pool-name $PREFIX-backend-pool \
+  --sku Standard \
+  --tags Owner=$PREFIX Project=pokemon 
+
+az network lb probe create \
+  --resource-group $PREFIX-rg \
+  --lb-name $PREFIX-lb \
+  --name $PREFIX-lb-probe \
+  --port 8080 \
+  --protocol http \
+  --path /health \
+  --interval 30
+
+az network lb rule create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-lb-rule \
+  --backend-port 8080 \
+  --frontend-port 80 \
+  --lb-name $PREFIX-lb \
+  --protocol Tcp \
+  --backend-pool-name $PREFIX-backend-pool \
+  --load-distribution Default \
+  --probe-name $PREFIX-lb-probe
+```
+
+### Firewall rules
+
+```bash
+az network nsg create \
+  --name $PREFIX-pokemon-vmss-nsg \
+  --resource-group $PREFIX-rg 
+
+az network nsg rule create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-vmss-nsg-rule-from-lb \
+  --nsg-name $PREFIX-pokemon-vmss-nsg \
+  --priority 200 \
+  --access Allow \
+  --source-address-prefixes AzureLoadBalancer \
+  --destination-port-ranges 8080 \
+  --protocol Tcp \
+  --description "Allow traffic to pokemon app from any L4 LoadBalancer" 
+
+az network nsg rule create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-vmss-nsg-rule-from-troubleshooting \
+  --nsg-name $PREFIX-pokemon-vmss-nsg \
+  --priority 220 \
+  --access Allow \
+  --source-address-prefixes "*" \
+  --destination-port-ranges 8080 22 \
+  --protocol Tcp \
+  --description "Allow traffic to pokemon app for troubleshooting" 
+```
+
+## VM Fleets with VMSS
+
+```bash
+az vmss create \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-vmss \
+  --computer-name-prefix $PREFIX-pokemon-vmss-vm \
+  --instance-count 2 \
+  --vnet-name $PREFIX-vnet \
+  --subnet $PREFIX-subnet-public \
+  --public-ip-per-vm  \
+  --public-ip-address-allocation static \
+  --load-balancer $PREFIX-lb \
+  --backend-pool-name $PREFIX-backend-pool \
+  --zones 2 \
+  --nsg $PREFIX-pokemon-vmss-nsg \
+  --image UbuntuLTS \
+  --vm-sku Standard_DS1_v2 \
+  --upgrade-policy-mode Automatic \
+  --admin-username $PREFIX \
+  --generate-ssh-keys \
+  --assign-identity $PREFIX-pokemonapp-msi \
+  --tags Owner=$PREFIX Project=pokemon \
+  --custom-data script-pokemon-healthbeat.sh
+
+VMSS_VM0_IP=$(az vmss list-instance-public-ips \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-pokemon-vmss \
+  --query [0].ipAddress \
+  --output tsv) && echo $VMSS_VM0_IP
+
+ssh $PREFIX@$VMSS_VM0_IP \
+  sudo tail /var/log/cloud-init-output.log --follow
+
+ssh $PREFIX@$VMSS_VM0_IP tail /pokemon-nodejs/app.log --follow
+
+LB_IP=$(az network public-ip show \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-lb-ip \
+  --query ipAddress \
+  --output TSV) && echo "Click on http://$LB_IP"
+```
+
+
+## Azure apps service
+
+
+### Web app provisioning
+
+```bash
+az appservice plan create \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod-plan \
+  --sku S1 \
+  --is-linux
+
+az webapp create \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --plan ${PREFIX}-prod-plan \
+  --deployment-container-image-name nginx
+
+az webapp log config \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --application-logging true \
+  --detailed-error-messages true \
+  --docker-container-logging filesystem 
+```
+
+### Slots
+
+```bash
+az webapp deployment slot create \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --slot secondary
+
+az webapp log config \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --slot secondary \
+  --application-logging true \
+  --detailed-error-messages true \
+  --docker-container-logging filesystem 
+```
+
+### Web app configuration
+
+```bash
+SA_CONN_STR=$(az storage account show-connection-string \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}stacc \
+  --query connectionString \
+  --output tsv)
+
+az webapp config appsettings set \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --settings AZURE_STORAGE_CONNECTION_STRING="$SA_CONN_STR" 
+  
+az webapp config appsettings set \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --slot secondary \
+  --slot-settings AZURE_STORAGE_CONNECTION_STRING="$SA_CONN_STR" 
+```
+
+### Container deployment
+
+```bash
+az webapp config container set \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --docker-custom-image-name ciberado/pokemon-dashboard:0.0.1 \
+  --slot secondary 
+
+WEBAPP_PRODUCTION=$(az webapp show \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --query defaultHostName \
+  --output tsv) && echo Click on https://$WEBAPP_PRODUCTION
+
+WEBAPP_SECONDARY=$(az webapp show \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --slot secondary \
+  --query defaultHostName \
+  --output tsv) && echo Click on https://$WEBAPP_SECONDARY
+```
+
+### Traffic control
+
+```bash
+az webapp traffic-routing set \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-prod \
+  --distribution secondary=50 
+
+az webapp deployment slot swap \
+  --resource-group $PREFIX-rg \
+  --name $PREFIX-prod \
+  --action swap \
+  --slot secondary 
+```
+
+## Azure pipelines
+
+```bash
+az appservice plan create \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-staging-plan \
+  --sku S1 \
+  --is-linux
+
+az webapp create \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-staging \
+  --plan ${PREFIX}-staging-plan \
+  --deployment-container-image-name nginx
+
+az webapp log config \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-staging \
+  --application-logging true \
+  --detailed-error-messages true \
+  --docker-container-logging filesystem 
+
+az webapp config appsettings set \
+  --resource-group $PREFIX-rg \
+  --name ${PREFIX}-prod \
+  --settings AZURE_STORAGE_CONNECTION_STRING="$SA_CONN_STR" 
+```
