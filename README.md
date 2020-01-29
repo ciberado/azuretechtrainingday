@@ -87,12 +87,11 @@ az sql db create \
   --resource-group $PREFIX-rg \
   --server $PREFIX-pokemondb-server \
   --name pokemonDB \
-  --auto-pause-delay 480 \
+  --auto-pause-delay 600 \
   --edition GeneralPurpose \
   --family Gen5 \
   --capacity 1 \
   --compute-model Serverless \
-  --auto-pause-delay 60 \
   --zone-redundant false \
   --tags Owner=$PREFIX Project=pokemon \
   --output table
