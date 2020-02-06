@@ -114,10 +114,14 @@ az sql server firewall-rule create \
 ### Interaction
  
 ```bash
-pip install --user mssql-cli
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+sudo curl -o /etc/apt/sources.list.d/microsoft.list "https://packages.microsoft.com/config/ubuntu/$(lsb_release -sr)/prod.list"
+sudo apt-get update
+sudo apt-get install mssql-cli -y
+mssql-cli --version
+```
 
-alias mssql-cli=$HOME/.local/bin/mssql-cli
-
+```bash
 SQL_URL=$PREFIX-pokemondb-server.database.windows.net
 
 mssql-cli \
