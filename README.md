@@ -144,7 +144,7 @@ curl https://pastebin.com/raw/3jkbTTSq -s | \
 
 ## Application secrets
 
-![Vaults](/images/abus-brand-close-up-closed-277670.jpg)
+![Identities](/images/shield-id-2.jpg)
 
 ### Keyvault and User Managed Identities
 
@@ -172,6 +172,8 @@ az keyvault set-policy \
   --object-id $PRINCIPAL \
   --output table
 ```
+
+![Vaults](/images/abus-brand-close-up-closed-277670.jpg)
 
 ### Secret storage
 
@@ -491,7 +493,7 @@ az network lb rule create \
 
 ### Firewall rules
 
-![Dog](closeup-photo-of-short-coated-white-and-gray-dog-825947.jpg)
+![Dog](white-short-coated-dog-160846.jpg)
 
 ```bash
 az network nsg create \
