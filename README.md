@@ -493,7 +493,7 @@ az network lb rule create \
 
 ### Firewall rules
 
-![Dog](white-short-coated-dog-160846.jpg)
+![Dog](images/white-short-coated-dog-160846.jpg)
 
 ```bash
 az network nsg create \
