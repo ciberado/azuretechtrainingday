@@ -2,6 +2,10 @@
 
 ![poster](/images/poster.png)
 
+## Slides
+
+We have published the beautiful dog-oriented slides we use for this course [here](https://ttdwebsite.z6.web.core.windows.net/). Feel free to take a look a them.
+
 ## Initial configuration
 
 ![Resource groups](/images/blur-bookcase-business-cds-264544.jpg)
