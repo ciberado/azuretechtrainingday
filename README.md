@@ -443,7 +443,7 @@ VM_IP_HC=$(az vm list-ip-addresses \
 ssh $PREFIX@$VM_IP_HC \
   sudo tail /var/log/cloud-init-output.log --follow
 ssh $PREFIX@$VM_IP_HC \
-  sudo tail sudo tail /pokemon-nodejs/app.log --follow
+  sudo tail /pokemon-nodejs/app.log --follow
 
 echo Click here: http://$VM_IP_HC:8080
 
