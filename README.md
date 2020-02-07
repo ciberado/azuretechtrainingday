@@ -328,7 +328,7 @@ az storage blob upload \
 SCRIPT_URL=$(az storage account show \
   --name ${PREFIX}stacc \
   --query "primaryEndpoints.web" \
-  --output tsv)/script-pokemon.sh && echo $SCRIPT_URL
+  --output tsv)script-pokemon.sh && echo $SCRIPT_URL
 ```
 
 ```bash
