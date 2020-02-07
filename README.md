@@ -75,17 +75,20 @@ az storage account show \
 SQL_PASS=MyPassword$RANDOM
 echo $SQL_PASS > sql_pass.txt
 
+# Change DB_PREFIX variable  to `common` if the instructors asks for it
+DB_PREFIX=$PREFIX
+
 az sql server create \
-  --resource-group $PREFIX-rg \
-  --name $PREFIX-pokemondb-server \
+  --resource-group $DB_PREFIX-rg \
+  --name $DB_PREFIX-pokemondb-server \
   --admin-user dbadmin \
   --admin-password $SQL_PASS \
   --output table
 
 # Discuss about db capacity planning
 az sql db create \
-  --resource-group $PREFIX-rg \
-  --server $PREFIX-pokemondb-server \
+  --resource-group $DB_PREFIX-rg \
+  --server $DB_PREFIX-pokemondb-server \
   --name pokemonDB \
   --auto-pause-delay 600 \
   --edition GeneralPurpose \
@@ -93,7 +96,7 @@ az sql db create \
   --capacity 1 \
   --compute-model Serverless \
   --zone-redundant false \
-  --tags Owner=$PREFIX Project=pokemon \
+  --tags Owner=$DB_PREFIX Project=pokemon \
   --output table
 ```
 
@@ -103,9 +106,9 @@ az sql db create \
 MY_IP=$(curl ifconfig.co -s)
 
 az sql server firewall-rule create \
-  --resource-group $PREFIX-rg \
-  --name $PREFIX-pokemondb-server--fw-rule \
-  --server $PREFIX-pokemondb-server \
+  --resource-group $DB_PREFIX-rg \
+  --name $PREFIX-pokemondb-server-fw-rule \
+  --server $DB_PREFIX-pokemondb-server \
   --start-ip-address $MY_IP \
   --end-ip-address $MY_IP \
   --output table
@@ -122,7 +125,7 @@ mssql-cli --version
 ```
 
 ```bash
-SQL_URL=$PREFIX-pokemondb-server.database.windows.net
+SQL_URL=$DB_PREFIX-pokemondb-server.database.windows.net
 
 mssql-cli \
   --username dbadmin \
@@ -177,7 +180,7 @@ SQL_CONN=$(az sql db show-connection-string \
   --client odbc \
   --auth-type SqlPassword \
   --name pokemonDB \
-  --server $PREFIX-pokemondb-server \
+  --server $DB_PREFIX-pokemondb-server \
   --output tsv | \
   awk '{gsub("<username>", "dbadmin", $0); print}' | \
   awk '{gsub("<password>", p, $0); print}' p="$SQL_PASS") && echo $SQL_CONN
@@ -223,8 +226,8 @@ az network vnet subnet update \
 
 az sql server vnet-rule create \
   --name $PREFIX-pokemondb-server-firewall-rule \
-  --resource-group $PREFIX-rg \
-  --server $PREFIX-pokemondb-server \
+  --resource-group $DB_PREFIX-rg \
+  --server $DB_PREFIX-pokemondb-server \
   --vnet-name $PREFIX-vnet \
   --subnet $PREFIX-subnet-public 
 ```
