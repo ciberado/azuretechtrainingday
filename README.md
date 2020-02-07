@@ -315,10 +315,23 @@ export KEY_VAULT_URI=https://$PREFIX-vault.vault.azure.net
 # Important: avoid blocking the extension mechanism by running the app in background
 node app.js > app.log &
 EOF
+```
 
-# Exercise: use Blob Storage as the natural way of storing extension scripts
-SCRIPT_URL=$(curl -s --upload-file ./script-pokemon.sh https://transfer.sh/script-pokemon.sh) && echo $SCRIPT_URL
+```bash
+az storage blob upload \
+  --account-name ${PREFIX}stacc \
+  --container-name \$web \
+  --file ./script-pokemon.sh \
+  --name script-pokemon.sh \
+  --output table
 
+SCRIPT_URL=$(az storage account show \
+  --name ${PREFIX}stacc \
+  --query "primaryEndpoints.web" \
+  --output tsv)/script-pokemon.sh && echo $SCRIPT_URL
+```
+
+```bash
 az vm extension set \
   --resource-group $PREFIX-rg \
   --vm-name $PREFIX-pokemon-vm \
