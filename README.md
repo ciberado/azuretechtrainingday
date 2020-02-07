@@ -226,12 +226,14 @@ az network vnet subnet update \
   --service-endpoints Microsoft.Sql \
   --output table
 
+# Subnet and Azure SQL may be in different resource groups, so we need the full resource name
+SUBNET_ID=$(az network vnet subnet show --resource-group $PREFIX-rg --vnet-name $PREFIX-vnet --name $PREFIX-subnet-public --query id --output tsv) && echo Public subnet ID: $SUBNET_ID
+
 az sql server vnet-rule create \
   --name $PREFIX-pokemondb-server-firewall-rule \
   --resource-group $DB_PREFIX-rg \
   --server $DB_PREFIX-pokemondb-server \
-  --vnet-name $PREFIX-vnet \
-  --subnet $PREFIX-subnet-public 
+  --subnet $SUBNET_ID 
 ```
 
 ## Virtual machines
