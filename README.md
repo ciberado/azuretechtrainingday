@@ -377,8 +377,6 @@ SA_ID=$(az storage account show --name ${PREFIX}stacc -g $PREFIX-rg --query id -
 
 PRINCIPAL=$(az identity show --name $PREFIX-pokemonapp-msi --resource-group $PREFIX-rg --query principalId --output tsv) && echo $PRINCIPAL
 
-sleep 10 # wait for principal propagation
-
 until az role assignment create \
   --assignee $PRINCIPAL \
   --role 'Owner' \
