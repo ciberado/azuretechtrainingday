@@ -698,28 +698,4 @@ az webapp deployment slot swap \
 
 ![Gear](/images/colorful-toothed-wheels-171198.jpg)
 
-```bash
-az appservice plan create \
-  --resource-group $PREFIX-rg \
-  --name ${PREFIX}-staging-plan \
-  --sku S1 \
-  --is-linux
-
-az webapp create \
-  --resource-group $PREFIX-rg \
-  --name ${PREFIX}-staging \
-  --plan ${PREFIX}-staging-plan \
-  --deployment-container-image-name nginx
-
-az webapp log config \
-  --resource-group $PREFIX-rg \
-  --name ${PREFIX}-staging \
-  --application-logging true \
-  --detailed-error-messages true \
-  --docker-container-logging filesystem 
-
-az webapp config appsettings set \
-  --resource-group $PREFIX-rg \
-  --name ${PREFIX}-prod \
-  --settings AZURE_STORAGE_CONNECTION_STRING="$SA_CONN_STR" 
-```
+This [is the tutorial](https://github.com/ciberado/azure-devops-workshop) you are looking for.
