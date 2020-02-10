@@ -93,7 +93,7 @@ az sql server create \
 az sql db create \
   --resource-group $DB_PREFIX-rg \
   --server $DB_PREFIX-pokemondb-server \
-  --name pokemonDB \
+  --name $PREFIX-pokemonDB \
   --auto-pause-delay 600 \
   --edition GeneralPurpose \
   --family Gen5 \
@@ -135,7 +135,7 @@ mssql-cli \
   --username dbadmin \
   --password $SQL_PASS \
   --server $SQL_URL \
-  --database pokemonDB \
+  --database $PREFIX-pokemonDB \
   --query "\ld"
 
 curl https://pastebin.com/raw/3jkbTTSq -s | \
@@ -143,7 +143,7 @@ curl https://pastebin.com/raw/3jkbTTSq -s | \
     --username dbadmin \
     --password $SQL_PASS \
     --server $SQL_URL \
-    --database pokemonDB 
+    --database $PREFIX-pokemonDB 
 ```
 
 ## Application secrets
@@ -185,7 +185,7 @@ az keyvault set-policy \
 SQL_CONN=$(az sql db show-connection-string \
   --client odbc \
   --auth-type SqlPassword \
-  --name pokemonDB \
+  --name $PREFIX-pokemonDB \
   --server $DB_PREFIX-pokemondb-server \
   --output tsv | \
   awk '{gsub("<username>", "dbadmin", $0); print}' | \
