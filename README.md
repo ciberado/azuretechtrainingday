@@ -353,7 +353,7 @@ SCRIPT_URL=$(az storage account show \
   --output tsv)script-pokemon.sh && echo $SCRIPT_URL
 ```
 
-Finally, we will instruct the VM to execute the *run script* Extension, downloading the script and executing it to install and run the Pokemon application.
+Now, we will instruct the VM to execute the *run script* Extension, downloading the script and executing it to install and run the Pokemon application.
 
 ```bash
 az vm extension set \
