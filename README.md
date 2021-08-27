@@ -2,20 +2,20 @@
 
 ![poster](/images/poster.png)
 
-## Slides
-
-We have published the beautiful dog-oriented slides we use for this course [here](https://ttdwebsite.z6.web.core.windows.net/). Feel free to take a look a them.
+This workshop provides a detailed overview of the most popular services in Azure. After completing it as a lab, you will have experience regarding how to create a relatively complex solution following best practices. Previous knowledge of the platform (or the supervision of a trainer) is adviced to understand the details of the architecture.
 
 ## Initial configuration
 
 ![Resource groups](/images/blur-bookcase-business-cds-264544.jpg)
 
+Let's configure our credentials and create the basic resources, including a Resource Group.
+
 ```bash
 PS1=\\n\\n$PS1
 
-echo "export PREFIX=lab$RANDOM" > prefix.sh
-source prefix.sh
+export PREFIX=lab$RANDOM
 
+# Optional, if not using the Web Shell
 az login
 
 az account show
@@ -30,6 +30,8 @@ az group create --name $PREFIX-rg --location westeurope
 
 ![Storage](/images/vinyl-record-playing-164853.jpg)
 
+We will use a Storage Account to create a very simple static website. A newer and more powerful approach to solve the same problem would be using the [Azure Static WebApps](https://azure.microsoft.com/en-us/services/app-service/static/).
+
 ```bash
 az storage account create \
   --name ${PREFIX}stacc \
@@ -39,6 +41,8 @@ az storage account create \
 ```
 
 ### Static websites
+
+Take this example as a way to familarize yourself with Storage Accounts and Blob Containers. Also, you will use the command line to transfer files between your laptop (or the cloud shell) and the container.
 
 ```bash
 az storage blob service-properties update \
@@ -70,16 +74,12 @@ az storage account show \
 
 ### Servers and databases
 
-* Azure SQL, Azure database for Mysql, Azure database for Postresql
-* Logical servers
-* Databases
-* Serverless model
+We will create a Azure SQL Server containing one database. And we will open direct access to it by creating a Firewall rule. In this case, this is not a recommended pattern, but the best approach (using Endpoints) will be shown later.
 
 ```bash
 SQL_PASS=MyPassword$RANDOM
 echo $SQL_PASS > sql_pass.txt
 
-# Change DB_PREFIX variable  to `common` if the instructors asks for it
 DB_PREFIX=$PREFIX
 
 az sql server create \
@@ -89,7 +89,6 @@ az sql server create \
   --admin-password $SQL_PASS \
   --output table
 
-# Discuss about db capacity planning
 az sql db create \
   --resource-group $DB_PREFIX-rg \
   --server $DB_PREFIX-pokemondb-server \
@@ -107,7 +106,7 @@ az sql db create \
 ### Firewall rules
 
 ```bash
-MY_IP=$(curl ifconfig.co -s)
+MY_IP=$(curl ifconfig.me)
 
 az sql server firewall-rule create \
   --resource-group $DB_PREFIX-rg \
@@ -119,7 +118,9 @@ az sql server firewall-rule create \
 ```
 
 ### Interaction
- 
+
+[mssql-cli](https://docs.microsoft.com/sql/tools/mssql-cli) is a very nice tool to interact with SQL Server and other compatible database engines. We will use it to connect to our instance and check everything has been properly setup.
+
 ```bash
 wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 sudo curl -o /etc/apt/sources.list.d/microsoft.list "https://packages.microsoft.com/config/ubuntu/$(lsb_release -sr)/prod.list"
@@ -127,6 +128,8 @@ sudo apt-get update
 sudo apt-get install mssql-cli -y
 mssql-cli --version
 ```
+
+The following instructions will list the content of the database and will execute a [data dump](https://pastebin.com/raw/3jkbTTSq) stored in a pastebin.
 
 ```bash
 SQL_URL=$DB_PREFIX-pokemondb-server.database.windows.net
