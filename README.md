@@ -129,7 +129,7 @@ sudo apt-get install mssql-cli -y
 mssql-cli --version
 ```
 
-The following instructions will list the content of the database and will execute a [data dump](https://pastebin.com/raw/3jkbTTSq) stored in a pastebin.
+The following instructions will list the content of the database and will execute a [data dump](https://pastebin.com/raw/3jkbTTSq) stored in a pastebin page. Basically, we pipe the content of that file throght `mssql-cli` to insert rows into our new database.
 
 ```bash
 SQL_URL=$DB_PREFIX-pokemondb-server.database.windows.net
@@ -153,6 +153,8 @@ curl https://pastebin.com/raw/3jkbTTSq -s | \
 
 ![Identities](/images/shield-id-2.jpg)
 
+[Managed Identities](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview) are the best way to provide credentials to our applications running inside VMs or WebApps. We will use them to allow an application to acces [Azure Key Vault](https://azure.microsoft.com/services/key-vault/), the only correct way to store sensitive information like the connection string to our database.
+
 ### Keyvault and User Managed Identities
 
 ```bash
@@ -161,7 +163,6 @@ az keyvault create \
   --name $PREFIX-vault \
   --output table
 
-# Execute it twice and compare .PrincipalId to talk about idempotency
 az identity create \
   --name $PREFIX-pokemonapp-msi \
   --resource-group $PREFIX-rg 
@@ -183,6 +184,8 @@ az keyvault set-policy \
 ![Vaults](/images/abus-brand-close-up-closed-277670.jpg)
 
 ### Secret storage
+
+The connection string contains sensitive information, like the database password. We will save it into the Key Vault created previously.
 
 ```bash
 SQL_CONN=$(az sql db show-connection-string \
@@ -220,8 +223,10 @@ az network vnet create \
 
 ![Bridge](/images/stargate.jpg)
 
+The correct way to allow accessing the managed database from a virtual machine **is not** opening Firewall ports like we did before. Instead, we will create a [Service Endpoint](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview) to set a network card of database inside our Virtual Network.
+
 ```bash
-# This will only work with subscription-wide privileges
+# This will only work with subscription-wide privileges. Don't worry if it is not your case.
 az network vnet list-endpoint-services \
   --location westeurope \
   --output table
@@ -253,6 +258,8 @@ az sql server vnet-rule create \
 
 ![Dog](/images/dog.jpg)
 
+Network Security Groups are the preferred way to protect traffic inside the Virtual Networks. They can be attached to both VMs and Subnets, and it is perfectly fine to do it both ways. In this case, we will create a security group opening administration ports (port 22, not the best practice) and web traffic (80 and 8080).
+
 ```bash
 az network nsg create \
   --name $PREFIX-pokemon-nsg \
@@ -283,6 +290,8 @@ az network nsg rule create \
   
 ### Virtual machine creation
 
+This Virtual Machine will have the Managed Identity attached to it, allowing access to the Key Vault from where an application (installed later) will retrieve the connection string to the database. Also, we will attach the previously created Network Security Group to it, so we will be able to `ssh` inside the VM and also access the server running inside using our browser.
+
 ```bash
 # Show all resources created: PublicIP, VMNic, vm-Disk and vm
 az vm create \
@@ -304,6 +313,10 @@ az vm create \
 
 ![Building](/images/2-man-on-construction-site-during-daytime-159306.jpg)
 
+Extensions are not recommended anymore for installing software, as it takes time to execute them. But they are still present in many scenarios, so we will take advantage of this mechanism to install a Pokemon web application inside the previosly created server.
+
+The next instructions will generate the script to be run inside the VM.
+
 ```bash
 cat << EOF > script-pokemon.sh
 #!/bin/sh
@@ -324,6 +337,8 @@ node app.js > app.log &
 EOF
 ```
 
+Now we will use a Storage Account to store the script.
+
 ```bash
 az storage blob upload \
   --account-name ${PREFIX}stacc \
@@ -338,6 +353,8 @@ SCRIPT_URL=$(az storage account show \
   --output tsv)script-pokemon.sh && echo $SCRIPT_URL
 ```
 
+Finally, we will instruct the VM to execute the *run script* Extension, downloading the script and executing it to install and run the Pokemon application.
+
 ```bash
 az vm extension set \
   --resource-group $PREFIX-rg \
@@ -345,7 +362,11 @@ az vm extension set \
   --name customScript \
   --publisher Microsoft.Azure.Extensions \
   --settings "{\"fileUris\": [\"$SCRIPT_URL\"],\"commandToExecute\": \"./script-pokemon.sh\"}" 
+```
 
+Finally, we can retrieve the IP of the VM and (hopefully) we will be able to access the logs of the server and the application itself.
+
+```bash
 VM_IP=$(az vm list-ip-addresses \
   --resource-group $PREFIX-rg \
   --name $PREFIX-pokemon-vm \
